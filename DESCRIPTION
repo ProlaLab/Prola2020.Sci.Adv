@@ -1,0 +1,40 @@
+Package: Prola2020.Sci.Adv
+Title: Support code for fluorescence decay analysis in Prola2020-SciAdv
+Version: 0.99.0
+Authors@R: c(
+    person("Hadrien", "Chauvin", email = "hadrien@chauvin.io", role = c("aut", "cre")),
+    person("Alexandre", "Prola", email = "alexandre.prola@gmail.com", role = c("dtc"))
+  )
+Date: 2020
+Description: Reproducible workflow for the triexponential NLME analysis of fluorescence decay in Prola2020-SciAdv.
+Depends:
+  R (>= 4.0.2)
+Imports:
+  magrittr (>= 1.5),
+  Rcpp (>= 1.0.5),
+  stringr (>= 1.4.0),
+  plyr (>= 1.8.6),
+  dplyr (>= 1.0.2),
+  nlme (>= 3.1),
+  mvtnorm (>= 1.1),
+  ggplot2 (>= 3.3.2),
+  minpack.lm (>= 1.2),
+  reshape2 (>= 1.4.4),
+  microbenchmark (>= 1.4),
+  parallel (>= 3.3.2),
+  stargazer (>= 5.2.2),
+  scales (>= 1.1.1),
+  numDeriv (>= 2016.8-1.1),
+  knitr (>= 1.30),
+  rmarkdown (>= 2.3),
+  RcppParallel (>= 5.0.2),
+  RcppArmadillo (>= 0.9.900.3.0)
+SystemRequirements: GNU make
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+URL: https://github.com/ProlaLab/Prola2020.Sci.Adv
+BugReports: https://github.com/ProlaLab/Prola2020.Sci.Adv/issues
+RoxygenNote: 5.0.1
+LinkingTo: Rcpp, RcppParallel, RcppArmadillo
+Suggests: testthat

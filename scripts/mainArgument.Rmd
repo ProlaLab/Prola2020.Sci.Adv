@@ -1,0 +1,55 @@
+---
+title: "Main argument (article body)"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Body
+
+## Summary
+
+We modelled the fluorescence decay using mixtures of three exponentials (mathematical supplement S{suppl}).  Using nonlinear mixed-effects models, we showed that the mixing proportions for the inner membrane in either _WT_ or _HACD1-KO_ were statistically different (table S{mitoplasts}).  However, we did not find any difference in either the characteristic times of decay for the inner membrane nor any difference for the outer membrane (table S{mitoplasts}).
+
+## Expansion
+
+```{r}
+load("../intermediaryData/mitoplasts.nlme_all.rda")
+load("../intermediaryData/mitoplasts.nlme_split.rda")
+load("../intermediaryData/mitoplasts.nlme_split_Bs.rda")
+load("../intermediaryData/mitoplasts.nlme_split_thetas.rda")
+load("../intermediaryData/mito.nlme_all.rda")
+load("../intermediaryData/mito.nlme_split.rda")
+load("../intermediaryData/mito.nlme_split_Bs.rda")
+load("../intermediaryData/mito.nlme_split_thetas.rda")
+
+aic = list(
+  inner_A_to_C = signif(AIC(nlme_split) - AIC(nlme_all), 3),
+  inner_A_to_B1 = signif(AIC(nlme_split_Bs) - AIC(nlme_all), 3),
+  inner_A_to_B2 = signif(AIC(nlme_split_thetas) - AIC(nlme_all), 3),
+  outer_A_to_C = signif(AIC(nlme_outer_split) - AIC(nlme_outer_all), 3),
+  outer_A_to_B1 = signif(AIC(nlme_outer_split_Bs) - AIC(nlme_outer_all), 3),
+  outer_A_to_B2 = signif(AIC(nlme_outer_split_thetas) - AIC(nlme_outer_all), 3)
+)
+```
+
+We modelled the fluorescence decay using mixtures of three exponentials (mathematical supplement S{suppl}).  To compare mixing proportions and caracteristic times of decay, we used various non-linear mixed-effects models (listing S{code listing}):
+firstly, a baseline nonlinear mixed-effects model for either the outer or the inner membrane did not discriminate _WT_ and _HACD1-KO_ (A); secondly, two models where either the mixing proportions or the characteristic times of decay alone could vary between _WT_ and _HACD1-KO_ (respectively, B1 and B2); finally, one model where both the mixing proportions and characteristic times were allowed to differ (C).  An analysis of variance (table S{mitoplasts}) showed that for the inner membrane C and B1 were statistically superior to A ($\Delta AIC(A \to C) = `r aic[['inner_A_to_C']]`$; $\Delta AIC(A \to B1) = `r aic[['inner_A_to_B1']]`$).  However, B2 was not superior to A for the inner membrane ($\Delta AIC(A \to B2) = `r aic[['inner_A_to_B2']]`$).  In the case of the outer membrane (table S{mito}), neither C nor B2 were statistically superior to A ($\Delta AIC(A \to C) = `r aic[['outer_A_to_C']]`$; $\Delta AIC(A \to B2) = `r aic[['outer_A_to_B2']]`$) but B1 was superior, albeit with a lesser order of magnitude than for the inner membrane ($\Delta AIC(A \to B1) = `r aic[['outer_A_to_B1']]`$).  Therefore, the mixing proportions for the inner membrane in either _WT_ or _HACD1-KO_ were statistically different, and less so for the outer membrane.  However, we did not find any difference in either the characteristic times of decay for the inner membrane nor any difference for the outer membrane (table S{mitoplasts} - S{mito}).  Overall, the inner membranes in _WT_ and _HACD1-KO_ were statistically different, but not the outer membranes.
+
+# Methods: modelling and statistical analysis of fluorescence decay (can be Supplementary as well)
+
+**Smoothing.** We smoothed the decay for the representative experiments using the generalized
+additive model (GAM) of **R** statistical package **mgcv** with a gaussian link and a P-spline smooth term.  Note that this smoothing was only used for figure 1 and not for the subsequent modelling steps below.
+
+**Model.** Fluorescence decay was modelled by finite exponential mixtures.  Those mixtures have been proven to be identifiable (REF).  We accounted for the artifacts of the measuring apparatus by convolving the mixtures with the instrumental response (or "prompt").  The model was comprised of `2N` parameters, with `N` the number of exponentials (each exponential has a scale and a characteristic time).  We did not find necessary to account for neither a potential time shift nor for background noise with an additional constant.
+
+**Fitting.** We fitted the model through either weighted nonlinear least-square at the experiment level (Levenberg-Marquardt) or nonlinear mixed-effects models (NLME) with potential linear regressors for the fixed parameters (Davidian 2003; Pinheiro & Bates 2000).
+
+**Statistical analysis.** For model comparison, we performed an analysis of variance (ANOVA), privileging the reading of the Akaike's Information Criterion over that of the Bayesian Information Criterion and the _p_-value of the loglikelihood-ratio (Burnham etc.).
+
+**Worflow.**  First, we determined the number of exponentials to use by comparing the AIC between potential models and whether models converged when fitted through a Levenberg-Marquardt nonlinear least square method.  Then, we determined the appropriate random-effects structure and heteroskedasticity correction for NLME modelling by assessing convergence, AIC, within-experiment and between-experiment heteroskedasticity for various combinations.  Lastly, we added a linear dependence of (some of) the fixed effects to a dummy variable _WT/HACD1_ and assessed the statistical significance of this addition with an analysis of variance (ANOVA).
+
+**Implementation.** The model is implemented in C++ using the Armadillo library for linear algebra (REF) and uses Armadillo's Fast Fourier Transform to perform the discrete convolution with the instrumental response.  Both the optimization and analysis were made in the **R** statistical language (REF) with package **nlme** (Pinheiro & Bates 2000).  All the code is made available at `github.com/ProlaLab/Prola2020.Sci.Adv` with the appropriate tests and reproducible workflow.
+

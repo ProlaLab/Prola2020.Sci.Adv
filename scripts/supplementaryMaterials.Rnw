@@ -1,0 +1,207 @@
+\documentclass{article}
+
+\usepackage[margin=0.5in]{geometry}
+\usepackage{amsmath}
+\usepackage{blkarray}
+\usepackage[flushleft]{threeparttable}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{inconsolata}
+\usepackage{caption,graphicx,newfloat}
+\usepackage[scaled]{helvet}
+\renewcommand\familydefault{\sfdefault}
+\usepackage[T1]{fontenc}
+\usepackage[helvet]{sfmath}
+
+\DeclareCaptionType{mathsupp}[Mathematical supplement]
+
+\title{Fluorescence decay}
+\date{}
+
+\begin{document}
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+concordance=TRUE
+)
+@
+
+
+\maketitle
+
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thelstlisting}{S\arabic{lstlisting}}
+\renewcommand{\themathsupp}{S\arabic{mathsupp}}
+
+\pagenumbering{gobble}
+
+\begin{center}
+\captionof{mathsupp}{An exponential model of fluorescence decay}\par
+\fbox{\centering
+\begin{minipage}{.8\textwidth}
+Let $P(i)$ be the ``prompt'' (instrumental response) and $Y(i)$ the ``decay'' (experimental response) for channel $i$.  The times of measurement are $\delta i$, with $\delta$ the time interval between channels.
+
+The decay is given by a mixture of exponentials with characteristic times $\tau_k$ and scaling parameters $C_k$ ($\mathcal H$ is the Heavyside function):
+\[G(t) = \mathcal H(t) \sum_k C_k e^{-t / \tau_k}\]
+
+Convolving with the Prompt response $P(i)$ gives the model, with $B_k = \delta C_k$ scaling parameters:
+\[F(i) = \sum_{j=0}^\infty P(j)\ \!\mathcal H(t) \sum_k B_k e^{-\delta(i - j) / \tau_k}\]
+
+For the optimization procedures, we reparametrize the $\tau_k$ to $\theta_k = \mathrm{log}\ \!\tau_k$.
+\end{minipage}
+}
+\end{center}
+
+\begin{lstlisting}[language=R, float, caption={Final NLME models for both the inner and outer membranes (in the R statistical language)}, basicstyle=\footnotesize\ttfamily, frame=single]
+library(nlme)
+
+# Shared coefficients between Hacd1-KO and WT
+model_A <- nlme(
+  Decay ~ ...,
+  fixed = theta1 + B1 + theta2 + B2 + theta3 + B3 ~ 1,
+  random = list(
+    File = pdDiag(B1 + B2 + B3 + theta1 + theta2 + theta3 ~ 1)
+  ),
+  weights = varConstPower(fixed = c(power = 0.5), const = 1, form = ~ fitted(.))
+)
+
+# Only Bs (resolving to mixing proportions) allowed to be different
+# in Hacd1-KO and WT populations
+model_B1 <- update(
+  model_A,
+  fixed = list(
+    theta1 + theta2 + theta3 ~ 1,
+    B1 + B2 + B3 ~ Population
+  )
+)
+
+# Only thetas (resolving to characteristic times) allowed to be different
+model_B2 <- update(
+  model_A,
+  fixed = list(
+    theta1 + theta2 + theta3 ~ Population,
+    B1 + B2 + B3 ~ 1
+  )
+)
+
+# All coefficients allowed to be different
+model_C <- update(
+  model_A,
+  fixed = theta1 + B1 + theta2 + B2 + theta3 + B3 ~ Population
+)
+\end{lstlisting}
+
+\begin{threeparttable}
+\caption{Non-linear mixed-effects models of fluorescence decay for the inner membrane (mitoplasts) \label{supptab:mitoplasts}}
+<<results='asis', echo=FALSE, warn=FALSE, message=FALSE>>=
+library(Prola2020.Sci.Adv)
+
+load("../intermediaryData/mitoplasts.nlme_all.rda")
+load("../intermediaryData/mitoplasts.nlme_split.rda")
+load("../intermediaryData/mitoplasts.nlme_split_Bs.rda")
+load("../intermediaryData/mitoplasts.nlme_split_thetas.rda")
+
+censoredFiles <- c("mitoplaste 8 C filter")
+
+df_grouped <- read_experiments()
+dat <- subset(df_grouped, Type == "mitoplaste" & !(File %in% censoredFiles))
+model <- triexpModelFactory(dat)
+triexp_nlme_model <- formula(model)
+
+library(stargazer)
+stargazer(
+  nlme_all, nlme_split_Bs, nlme_split_thetas, nlme_split,
+  single.row=TRUE,
+  dep.var.labels=c("Experimental response (event count/ns)"),
+  covariate.labels=c(
+    "$\\theta_1$",
+    "$B_1$",
+    "$\\theta_2$",
+    "$B_2$",
+    "$\\theta_3$",
+    "$B_3$",
+    "$B_1$ (intercept)\\tnote{a}",
+    "$B_1$ \\textit{(WT)}\\tnote{a}",
+    "$B_2$ (intercept)",
+    "$B_2$ \\textit{(WT)}",
+    "$B_3$ (intercept)",
+    "$B_3$ \\textit{(WT)}",
+    "$\\theta_1$ (intercept)",
+    "$\\theta_1$ \\textit{(WT)}",
+    "$\\theta_2$ (intercept)",
+    "$\\theta_2$ \\textit{(WT)}",
+    "$\\theta_3$ (intercept)",
+    "$\\theta_3$ \\textit{(WT)}"
+  ),
+  column.labels = c("A", "B1", "B2", "C"),
+  float = FALSE
+)
+@
+
+\begin{tablenotes}
+\small
+\item[a]
+Whether the experiment concerns the \textit{WT} or \textit{Hacd1-KO} population is encoded in a categorical factor with the following contrast matrix:
+\[L = \begin{blockarray}{ccc}& \textrm{\footnotesize\sffamily Hacd1-KO} & \textrm{\sffamily\footnotesize WT} \\\begin{block}{c(cc)}\textrm{\sffamily\footnotesize intercept} & 1 & 0 \\\textrm{\sffamily\footnotesize WT} & -1 & 1 \\\end{block}\end{blockarray}\]
+
+For instance, the mean $\theta_1$ for population \textit{Hacd1-KO} would be the intercept,
+and the mean $\theta_1$ for population \text{WT} would be
+$\textrm{\sffamily(intercept)} + \textrm{\sffamily(WT)}$.
+\end{tablenotes}
+
+\end{threeparttable}
+
+\begin{threeparttable}
+\caption{Non-linear mixed-effects models of fluorescence decay for the outer membrane (whole mitochondria)}
+<<results='asis', echo=FALSE, warn=FALSE>>=
+load("../intermediaryData/mito.nlme_all.rda")
+load("../intermediaryData/mito.nlme_split.rda")
+load("../intermediaryData/mito.nlme_split_Bs.rda")
+load("../intermediaryData/mito.nlme_split_thetas.rda")
+
+df_grouped <- read_experiments()
+dat <- subset(df_grouped, Type == "mito")
+model <- triexpModelFactory(dat)
+triexp_nlme_model <- formula(model)
+
+library(stargazer)
+stargazer(
+  nlme_outer_all, nlme_outer_split_Bs, nlme_outer_split_thetas, nlme_outer_split,
+  single.row=TRUE,
+  dep.var.labels=c("Experimental response (event count/ns)"),
+  covariate.labels=c(
+    "$\\theta_1$",
+    "$B_1$",
+    "$\\theta_2$",
+    "$B_2$",
+    "$\\theta_3$",
+    "$B_3$",
+    "$B_1$ (intercept)\\tnote{a}",
+    "$B_1$ \\textit{(WT)}\\tnote{a}",
+    "$B_2$ (intercept)",
+    "$B_2$ \\textit{(WT)}",
+    "$B_3$ (intercept)",
+    "$B_3$ \\textit{(WT)}",
+    "$\\theta_1$ (intercept)",
+    "$\\theta_1$ \\textit{(WT)}",
+    "$\\theta_2$ (intercept)",
+    "$\\theta_2$ \\textit{(WT)}",
+    "$\\theta_3$ (intercept)",
+    "$\\theta_3$ \\textit{(WT)}"
+  ),
+  column.labels = c("A", "B1", "B2", "C"),
+  float = FALSE
+)
+@
+
+\begin{tablenotes}
+\small
+\item[a]
+See note \textit{a} of table~\ref{supptab:mitoplasts}.
+
+\end{tablenotes}
+
+\end{threeparttable}
+
+\end{document}

@@ -1,0 +1,32 @@
+name: main
+on:
+  push:
+    branches:
+      - '**'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      RENV_PATHS_ROOT: ~/.local/share/renv
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Cache packages
+      uses: actions/cache@v1
+      with:
+        path: |
+          ${{ env.RENV_PATHS_ROOT }}
+          renv/library
+        key: ${{ runner.os }}-renv-${{ hashFiles('**/renv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-renv-
+    - name: Restore packages
+      shell: sudo Rscript {0}
+      run: |
+        if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+        options(renv.consent = TRUE)
+        renv::restore()
+    - name: Build
+      run: sudo R CMD build .
+    - name: Check
+      run: sudo R CMD check Prola2020.Sci.Adv_0.99.0.tar.gz --as-cran --no-manual
